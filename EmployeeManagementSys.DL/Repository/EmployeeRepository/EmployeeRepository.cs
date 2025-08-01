@@ -1,9 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace EmployeeManagementSys.DL;
 public class EmployeeRepository : IEmployeeRepository
@@ -123,7 +119,7 @@ public class EmployeeRepository : IEmployeeRepository
         return await _context.Employees
             .Include(e => e.AttendanceRecords)
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Id == employeeId.ToString());
+            .FirstOrDefaultAsync(e => e.Id == employeeId);
     }
 
     public async Task<bool> IsEmailUniqueAsync(string email, Guid? excludeId = null)
@@ -131,7 +127,7 @@ public class EmployeeRepository : IEmployeeRepository
         var query = _context.Employees.AsQueryable();
         if (excludeId.HasValue)
         {
-            query = query.Where(e => e.Id != excludeId.Value.ToString());
+            query = query.Where(e => e.Id != excludeId.Value);
         }
         return !await query.AnyAsync(e => e.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
     }
@@ -142,7 +138,7 @@ public class EmployeeRepository : IEmployeeRepository
 
         if (excludeId.HasValue)
         {
-            query = query.Where(e => e.Id != excludeId.Value.ToString());
+            query = query.Where(e => e.Id != excludeId.Value);
         }
 
         return !await query.AnyAsync(e => e.NationalId == nationalId);

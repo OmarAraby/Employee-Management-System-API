@@ -18,12 +18,13 @@ namespace EmployeeManagementSys.DL
                 .UseSqlServer(connectionString));
 
             //Register repositories and other services
+            
+            services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             services.AddScoped<IAttendanceRepository, AttendanceRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             #region User Services
-            //services.AddScoped<IEmployeeRepository, EmployeeRepository>();
-            services.AddIdentity<Employee, IdentityRole>(options =>
+            services.AddIdentity<Employee, IdentityRole<Guid>>(options =>
             {
                 #region Password Settings
                 options.Password.RequireDigit = true;

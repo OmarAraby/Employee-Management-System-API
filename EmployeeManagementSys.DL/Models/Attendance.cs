@@ -6,6 +6,7 @@ namespace EmployeeManagementSys.DL
     {
         public Guid AttendanceId { get; set; }
         public Guid EmployeeId { get; set; }
+
         public DateTime CheckInDate { get; set; }
         public TimeSpan CheckInTime { get; set; }
         public TimeSpan? CheckOutTime { get; set; }

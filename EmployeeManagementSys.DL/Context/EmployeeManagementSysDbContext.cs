@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace EmployeeManagementSys.DL
 {
-    public class EmployeeManagementSysDbContext : IdentityDbContext<Employee>
+    public class EmployeeManagementSysDbContext : IdentityDbContext<Employee, IdentityRole<Guid>, Guid>
     {
         public EmployeeManagementSysDbContext(DbContextOptions<EmployeeManagementSysDbContext> options)
             : base(options)

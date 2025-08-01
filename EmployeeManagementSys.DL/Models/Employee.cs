@@ -2,7 +2,7 @@
 
 namespace EmployeeManagementSys.DL
 {
-    public class Employee : IdentityUser
+    public class Employee : IdentityUser<Guid>
     {
         public string FirstName { get; set; }
         public string LastName { get; set; }
