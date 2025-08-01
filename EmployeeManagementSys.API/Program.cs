@@ -1,3 +1,4 @@
+using EmployeeManagementSys.BL;
 using EmployeeManagementSys.DL;
 using Microsoft.Extensions.FileProviders;
 
@@ -13,6 +14,8 @@ builder.Services.AddSwaggerGen();
 
 // Register the DbContext 
 builder.Services.AddDataAccessServices(builder.Configuration);
+// Register the business services
+builder.Services.AddBusinessServices();
 
 var app = builder.Build();
 

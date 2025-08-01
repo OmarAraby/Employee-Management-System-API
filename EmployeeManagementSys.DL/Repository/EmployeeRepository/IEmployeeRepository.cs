@@ -21,6 +21,12 @@ namespace EmployeeManagementSys.DL
         Task<int> GetTotalEmployeesAsync();
         Task<int> GetActiveEmployeesCountAsync();
 
+        // authentication-related methods
+        Task<Employee?> GetByEmailAsync(string email);
+        Task<Employee?> GetByUsernameAsync(string username);
+        Task<bool> UpdatePasswordResetStatusAsync(Guid employeeId, bool requiresReset);
+        Task<IEnumerable<Employee>> GetEmployeesRequiringPasswordResetAsync();
+
 
 
     }

@@ -1,8 +1,8 @@
-﻿
+﻿using System.Collections;
 
 namespace EmployeeManagementSys.DL
 {
-    public class PagedList<T>
+    public class PagedList<T> : IEnumerable<T>
     {
         public List<T> Items { get; }
         public int TotalCount { get; }
@@ -14,11 +14,20 @@ namespace EmployeeManagementSys.DL
 
         public PagedList(List<T> items, int totalCount, int pageNumber, int pageSize)
         {
-            Items = items;
+            Items = items ?? throw new ArgumentNullException(nameof(items));
             TotalCount = totalCount;
             PageNumber = pageNumber;
             PageSize = pageSize;
         }
-    }
 
+        public IEnumerator<T> GetEnumerator()
+        {
+            return Items.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
 }

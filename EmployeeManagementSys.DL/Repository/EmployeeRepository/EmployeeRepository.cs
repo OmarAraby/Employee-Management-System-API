@@ -155,5 +155,41 @@ public class EmployeeRepository : IEmployeeRepository
 
 
     }
+
+    public async Task<Employee?> GetByEmailAsync(string email)
+    {
+        return await _context.Set<Employee>()
+            .FirstOrDefaultAsync(e => e.Email == email);
+    }
+
+    public async Task<Employee?> GetByUsernameAsync(string username)
+    {
+        return await _context.Set<Employee>()
+            .FirstOrDefaultAsync(e => e.UserName == username);
+    }
+
+    public async Task<bool> UpdatePasswordResetStatusAsync(Guid employeeId, bool requiresReset)
+    {
+        var employee = await GetByIDAsync(employeeId);
+        if (employee == null) return false;
+
+        employee.RequiresPasswordReset = requiresReset;
+        employee.UpdatedDate = DateTime.UtcNow;
+
+        if (!requiresReset)
+        {
+            employee.LastPasswordResetDate = DateTime.UtcNow;
+        }
+
+        await UpdateAsync(employee);
+        return true;
+    }
+
+    public async Task<IEnumerable<Employee>> GetEmployeesRequiringPasswordResetAsync()
+    {
+        return await _context.Set<Employee>()
+            .Where(e => e.RequiresPasswordReset && e.Status == EmployeeStatus.Active)
+            .ToListAsync();
+    }
 }
 

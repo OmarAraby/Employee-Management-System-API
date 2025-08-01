@@ -19,6 +19,8 @@ namespace EmployeeManagementSys.DL
         // tables
         public DbSet<Attendance> Attendances { get; set; }
         public DbSet<Employee> Employees { get; set; }
+        public DbSet<Signature> Signatures { get; set; }
+
     }
   
 }

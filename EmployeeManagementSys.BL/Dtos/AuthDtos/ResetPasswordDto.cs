@@ -1,0 +1,12 @@
+﻿
+
+namespace EmployeeManagementSys.BL
+{
+    public class ResetPasswordDto
+    {
+        public Guid EmployeeId { get; set; }
+        public string CurrentPassword { get; set; }
+        public string NewPassword { get; set; }
+        public string ConfirmPassword { get; set; }
+    }
+}

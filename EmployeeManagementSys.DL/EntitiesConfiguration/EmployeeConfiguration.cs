@@ -37,6 +37,13 @@ namespace EmployeeManagementSys.DL
                 .HasDefaultValue(EmployeeStatus.Active)
                 .HasConversion<int>();
 
+            builder.Property(e => e.RequiresPasswordReset)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            builder.Property(e => e.LastPasswordResetDate)
+                .IsRequired(false);
+
             // Ignore computed properties
             builder.Ignore(e => e.FullName);
             builder.Ignore(e => e.IsActive);
