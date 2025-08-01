@@ -1,3 +1,4 @@
+using EmployeeManagementSys.API.HandleFiles;
 using EmployeeManagementSys.BL;
 using EmployeeManagementSys.DL;
 using Microsoft.Extensions.FileProviders;
@@ -17,6 +18,8 @@ builder.Services.AddDataAccessServices(builder.Configuration);
 // Register the business services
 builder.Services.AddBusinessServices();
 
+builder.Services.AddScoped<IFileService, FileService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -28,6 +31,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 

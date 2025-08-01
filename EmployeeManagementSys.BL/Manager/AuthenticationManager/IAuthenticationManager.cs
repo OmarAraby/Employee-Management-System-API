@@ -2,7 +2,7 @@
 
 namespace EmployeeManagementSys.BL
 {
-    internal interface IAuthenticationManager
+    public interface IAuthenticationManager
     {
         Task<APIResult<LoginResponseDto>> LoginAsync(LoginDto loginDto);
         Task<APIResult<ResetPasswordResponseDto>> ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
