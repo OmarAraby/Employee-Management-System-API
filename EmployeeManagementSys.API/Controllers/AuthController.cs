@@ -33,12 +33,7 @@ namespace EmployeeManagementSys.API.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
-        [HttpPost("refresh-token")]
-        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto refreshDto)
-        {
-            var result = await _authManager.RefreshTokenAsync(refreshDto);
-            return result.Success ? Ok(result) : BadRequest(result);
-        }
+       
 
 
 
