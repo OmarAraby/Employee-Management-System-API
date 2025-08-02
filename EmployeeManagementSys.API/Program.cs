@@ -1,6 +1,7 @@
 using EmployeeManagementSys.API.HandleFiles;
 using EmployeeManagementSys.BL;
 using EmployeeManagementSys.DL;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -51,5 +52,49 @@ app.UseStaticFiles(new StaticFileOptions
 #endregion
 
 app.MapControllers();
+
+
+#region Seeding
+// Seed data at startup
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var userManager = services.GetRequiredService<UserManager<Employee>>();
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+    // Seed roles
+    string[] roles = { "Admin", "Employee" };
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole<Guid> { Name = role, NormalizedName = role.ToUpper() });
+        }
+    }
+
+    // Seed initial admin
+    var adminEmail = "admin@company.com";
+    if (await userManager.FindByEmailAsync(adminEmail) == null)
+    {
+        var admin = new Employee
+        {
+            UserName = "admin",
+            Email = adminEmail,
+            FirstName = "Admin",
+            LastName = "User",
+            NationalId = "ADMIN123456789",
+            Age = 30,
+            CreatedDate = DateTime.UtcNow,
+            Status = EmployeeStatus.Active,
+            RequiresPasswordReset = true
+        };
+        var result = await userManager.CreateAsync(admin, "Admin@123");
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(admin, "Admin");
+        }
+    }
+}
+#endregion
 
 app.Run();

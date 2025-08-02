@@ -15,7 +15,7 @@ namespace EmployeeManagementSys.BL
         public int Age { get; set; }
         public string? Signature { get; set; }
         public EmployeeStatus Status { get; set; }
-        public string StatusDisplayName { get; set; }
+        public string StatusDisplayName { get; set; } = string.Empty;
         public DateTime CreatedDate { get; set; }
         public DateTime? UpdatedDate { get; set; }
         public bool IsActive { get; set; }

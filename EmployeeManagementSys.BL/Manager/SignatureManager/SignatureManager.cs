@@ -58,6 +58,11 @@ namespace EmployeeManagementSys.BL
             var addedSignature = await _unitOfWork.SignatureRepository.AddAsync(signature);
             await _unitOfWork.SaveChangesAsync();
 
+            // Update Employee.SignatureId
+            employee.SignatureId = addedSignature.SignatureId;
+            await _unitOfWork.EmployeeRepository.UpdateAsync(employee);
+            await _unitOfWork.SaveChangesAsync();
+
             return new APIResult<SignatureDto>
             {
                 Success = true,

@@ -39,7 +39,8 @@ namespace EmployeeManagementSys.DL
                 #region Email Settings
                 options.User.RequireUniqueEmail = true;
                 #endregion
-            }).AddEntityFrameworkStores<EmployeeManagementSysDbContext>();
+            }).AddEntityFrameworkStores<EmployeeManagementSysDbContext>()
+            .AddDefaultTokenProviders();
             services.AddAuthentication(option =>
             {
                 option.DefaultAuthenticateScheme =

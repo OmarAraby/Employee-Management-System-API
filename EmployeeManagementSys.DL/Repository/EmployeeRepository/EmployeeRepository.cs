@@ -39,10 +39,13 @@ public class EmployeeRepository : IEmployeeRepository
 
     public async Task<Employee> GetByIDAsync(Guid id)
     {
-      return await _context.Employees.FindAsync(id) ?? throw new KeyNotFoundException($"Employee with ID {id} not found.");  
+      return await _context.Employees
+            .Include(e => e.Signature)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e=>e.Id==id) ?? throw new KeyNotFoundException($"Employee with ID {id} not found.");  
     }
 
-    public async Task<(PagedList<Employee> Items, int TotalCount)> GetPaginatedEmployeesAsync(EmployeeQueryParams queryParams)
+    public async Task<PagedList<Employee>> GetPaginatedEmployeesAsync(EmployeeQueryParams queryParams)
     {
         var query = _context.Employees.AsNoTracking().AsQueryable();
 
@@ -50,9 +53,9 @@ public class EmployeeRepository : IEmployeeRepository
         if (!string.IsNullOrWhiteSpace(queryParams.SearchTerm))
         {
             query = query.Where(e =>
-                (e.FirstName + " " + e.LastName).Contains(queryParams.SearchTerm) ||
-                e.Email.Contains(queryParams.SearchTerm) ||
-                e.NationalId.Contains(queryParams.SearchTerm));
+                (e.FirstName + " " + (e.LastName ?? "")).Contains(queryParams.SearchTerm) ||
+                e.Email!.Contains(queryParams.SearchTerm) ||
+                e.NationalId!.Contains(queryParams.SearchTerm));
         }
 
         if (queryParams.Status.HasValue)
@@ -70,44 +73,36 @@ public class EmployeeRepository : IEmployeeRepository
             query = query.Where(e => e.Age <= queryParams.MaxAge.Value);
         }
 
-        // Sorting - Using SortBy + SortDescending
+        // Sorting
         query = queryParams.SortBy?.ToLower() switch
         {
             "name" or "firstname" or "lastname" => queryParams.SortDescending
-                ? query.OrderByDescending(e => e.FirstName).ThenByDescending(e => e.LastName)
-                : query.OrderBy(e => e.FirstName).ThenBy(e => e.LastName),
-
+                ? query.OrderByDescending(e => e.FirstName).ThenByDescending(e => e.LastName ?? "")
+                : query.OrderBy(e => e.FirstName).ThenBy(e => e.LastName ?? ""),
             "email" => queryParams.SortDescending
-                ? query.OrderByDescending(e => e.Email)
-                : query.OrderBy(e => e.Email),
-
+                ? query.OrderByDescending(e => e.Email ?? "")
+                : query.OrderBy(e => e.Email ?? ""),
             "age" => queryParams.SortDescending
                 ? query.OrderByDescending(e => e.Age)
                 : query.OrderBy(e => e.Age),
-
             "status" => queryParams.SortDescending
                 ? query.OrderByDescending(e => e.Status)
                 : query.OrderBy(e => e.Status),
-
             "createddate" => queryParams.SortDescending
                 ? query.OrderByDescending(e => e.CreatedDate)
                 : query.OrderBy(e => e.CreatedDate),
-
             _ => queryParams.SortDescending
                 ? query.OrderByDescending(e => e.CreatedDate)
-                : query.OrderBy(e => e.CreatedDate) // safe default
+                : query.OrderBy(e => e.CreatedDate)
         };
 
         var totalCount = await query.CountAsync();
-
         var employees = await query
             .Skip((queryParams.PageNumber - 1) * queryParams.PageSize)
             .Take(queryParams.PageSize)
             .ToListAsync();
 
-        var pagedList = new PagedList<Employee>(employees, totalCount, queryParams.PageNumber, queryParams.PageSize);
-
-        return (pagedList, totalCount);
+        return new PagedList<Employee>(employees, totalCount, queryParams.PageNumber, queryParams.PageSize);
     }
     public async Task<int> GetTotalEmployeesAsync()
     {

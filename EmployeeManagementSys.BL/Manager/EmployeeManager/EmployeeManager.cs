@@ -185,29 +185,31 @@ namespace EmployeeManagementSys.BL
             };
         }
 
-        public async Task<APIResult<(PagedList<EmployeeListDto> Items, int TotalCount)>> GetPaginatedEmployeesAsync(EmployeeQueryParams queryParams)
+        public async Task<APIResult<PagedList<EmployeeListDto>>> GetPaginatedEmployeesAsync(EmployeeQueryParams queryParams)
         {
-            var (items, totalCount) = await _unitOfWork.EmployeeRepository.GetPaginatedEmployeesAsync(queryParams);
-            var dtoItems = items.Items.Select(e => new EmployeeListDto
+            var pagedEmployees = await _unitOfWork.EmployeeRepository.GetPaginatedEmployeesAsync(queryParams);
+            var dtoItems = pagedEmployees.Items.Select(e => new EmployeeListDto
             {
                 Id = e.Id,
                 FullName = e.FullName,
-                Email = e.Email,
-                PhoneNumber = e.PhoneNumber,
-                NationalId = e.NationalId,
+                Email = e.Email ?? "",
+                PhoneNumber = e.PhoneNumber ?? "",
+                NationalId = e.NationalId ?? "",
                 Age = e.Age,
                 Status = e.Status,
-                StatusDisplayName = e.StatusDisplayName,
+                StatusDisplayName = e.StatusDisplayName ?? e.Status.ToString(),
                 CreatedDate = e.CreatedDate,
+
                 IsActive = e.IsActive
             }).ToList();
-            return new APIResult<(PagedList<EmployeeListDto> Items, int TotalCount)>
+
+            var pagedDtoList = new PagedList<EmployeeListDto>(dtoItems, pagedEmployees.TotalCount, pagedEmployees.PageNumber, pagedEmployees.PageSize);
+            return new APIResult<PagedList<EmployeeListDto>>
             {
                 Success = true,
-                Data = (new PagedList<EmployeeListDto>(dtoItems, totalCount, items.PageNumber, items.PageSize), totalCount)
+                Data = pagedDtoList
             };
         }
-
         public async Task<APIResult<EmployeeStatsDto>> GetEmployeeStatisticsAsync()
         {
             var totalEmployees = await _unitOfWork.EmployeeRepository.GetTotalEmployeesAsync();
@@ -262,9 +264,11 @@ namespace EmployeeManagementSys.BL
                     FullName = employee.FullName,
                     PhoneNumber = employee.PhoneNumber,
                     NationalId = employee.NationalId,
+                    Email = employee.Email ?? string.Empty, 
                     Age = employee.Age,
                     Status = employee.Status,
                     StatusDisplayName = employee.StatusDisplayName,
+                    Signature = employee.Signature?.FilePath, 
                     CreatedDate = employee.CreatedDate,
                     UpdatedDate = employee.UpdatedDate
                 }

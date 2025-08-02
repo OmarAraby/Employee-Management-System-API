@@ -3,7 +3,6 @@ using EmployeeManagementSys.DL;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 
-
 namespace EmployeeManagementSys.BL
 {
     public class AuthenticationManager : IAuthenticationManager
@@ -44,7 +43,6 @@ namespace EmployeeManagementSys.BL
             }
 
             var result = await _signInManager.CheckPasswordSignInAsync(employee, loginDto.Password, lockoutOnFailure: true);
-
             if (!result.Succeeded)
             {
                 string errorMessage = result.IsLockedOut
@@ -62,7 +60,7 @@ namespace EmployeeManagementSys.BL
             var token = await _jwtService.GenerateTokenAsync(employee);
             var tokenExpiry = DateTime.UtcNow.AddHours(24); // Match your JWT configuration
 
-            // Get user role
+            // Get user roles
             var roles = await _userManager.GetRolesAsync(employee);
             var userRole = roles.FirstOrDefault() ?? "Employee";
 
@@ -129,12 +127,20 @@ namespace EmployeeManagementSys.BL
                 };
             }
 
-            // Update password reset flag
+            // Update password reset flag and save changes
             employee.RequiresPasswordReset = false;
             employee.LastPasswordResetDate = DateTime.UtcNow;
             employee.UpdatedDate = DateTime.UtcNow;
 
-            await _userManager.UpdateAsync(employee);
+            var updateResult = await _userManager.UpdateAsync(employee);
+            if (!updateResult.Succeeded)
+            {
+                return new APIResult<ResetPasswordResponseDto>
+                {
+                    Success = false,
+                    Errors = updateResult.Errors.Select(e => new APIError { Code = "UpdateFailed", Message = e.Description }).ToArray()
+                };
+            }
 
             return new APIResult<ResetPasswordResponseDto>
             {
@@ -175,8 +181,5 @@ namespace EmployeeManagementSys.BL
                 };
             }
         }
-
-      }
+    }
 }
-
-

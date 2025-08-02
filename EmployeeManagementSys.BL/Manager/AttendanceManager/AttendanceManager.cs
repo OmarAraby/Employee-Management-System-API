@@ -36,7 +36,22 @@ namespace EmployeeManagementSys.BL
             }
 
             var now = DateTime.UtcNow;
-            var localTime = TimeZoneInfo.ConvertTimeFromUtc(now, TimeZoneInfo.FindSystemTimeZoneById("E. Egypt Standard Time"));
+            TimeZoneInfo egyptTimeZone;
+            try
+            {
+                egyptTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Egypt Standard Time");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Fallback to UTC+2 if time zone is not found (manual offset)
+                egyptTimeZone = TimeZoneInfo.CreateCustomTimeZone(
+                    "Egypt Custom Time",
+                    TimeSpan.FromHours(2),
+                    "Egypt Standard Time",
+                    "Egypt Standard Time"
+                );
+            }
+            var localTime = TimeZoneInfo.ConvertTimeFromUtc(now, egyptTimeZone);
             var checkInTime = localTime.TimeOfDay;
 
             if (checkInTime < new TimeSpan(7, 30, 0) || checkInTime > new TimeSpan(9, 0, 0))
@@ -75,6 +90,7 @@ namespace EmployeeManagementSys.BL
                 AttendanceId = addedAttendance.AttendanceId,
                 EmployeeId = addedAttendance.EmployeeId,
                 EmployeeFullName = employee?.FullName,
+                EmployeeEmail= employee?.Email,
                 CheckInDate = addedAttendance.CheckInDate,
                 CheckInTime = addedAttendance.CheckInTime,
                 CheckInDateString = addedAttendance.CheckInDateString,
@@ -97,7 +113,6 @@ namespace EmployeeManagementSys.BL
                 }
             };
         }
-
         public async Task<APIResult<IEnumerable<AttendanceListDto>>> GetWeeklyAttendanceAsync(Guid employeeId, string userRole)
         {
             if (userRole != "Employee")
@@ -131,7 +146,42 @@ namespace EmployeeManagementSys.BL
                 Data = dtoList
             };
         }
+        public async Task<APIResult<PagedList<AttendanceListDto>>> GetPaginatedAttendanceAsync(AttendanceQueryParams queryParams, string userRole)
+        {
+            if (userRole != "Admin")
+            {
+                return new APIResult<PagedList<AttendanceListDto>>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Only admins can view paginated attendance." } }
+                };
+            }
 
+            var (attendances, totalCount) = await _unitOfWork.AttendanceRepository.GetPaginatedAttendanceAsync(queryParams);
+
+            var tasks = attendances.Items.Select(async a => new AttendanceListDto
+            {
+                AttendanceId = a.AttendanceId,
+                EmployeeId = a.EmployeeId,
+                EmployeeFullName = queryParams.IncludeEmployee
+                    ? (await _unitOfWork.EmployeeRepository.GetByIDAsync(a.EmployeeId))?.FullName
+                    : null,
+                CheckInDate = a.CheckInDate,
+                CheckInTime = a.CheckInTime,
+                IsOnTime = a.IsOnTime,
+                Status = a.Status,
+                StatusDisplayName = AttendanceExtensions.GetStatusDisplayName(a)
+            });
+            var dtoList = (await Task.WhenAll(tasks)).ToList();
+
+            var pagedDtoList = new PagedList<AttendanceListDto>(dtoList, totalCount, queryParams.PageNumber, queryParams.PageSize);
+
+            return new APIResult<PagedList<AttendanceListDto>>
+            {
+                Success = true,
+                Data = pagedDtoList
+            };
+        }
         public async Task<APIResult<IEnumerable<AttendanceListDto>>> GetDailyAttendanceListAsync(string userRole)
         {
             if (userRole != "Admin")
@@ -173,35 +223,35 @@ namespace EmployeeManagementSys.BL
             };
         }
 
-        public async Task<APIResult<Dictionary<Guid, double>>> GetWeeklyWorkingHoursAsync(string userRole)
-        {
-            if (userRole != "Admin")
-            {
-                return new APIResult<Dictionary<Guid, double>>
-                {
-                    Success = false,
-                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Only admins can view weekly working hours." } }
-                };
-            }
+        //public async Task<APIResult<Dictionary<Guid, double>>> GetWeeklyWorkingHoursAsync(string userRole)
+        //{
+        //    if (userRole != "Admin")
+        //    {
+        //        return new APIResult<Dictionary<Guid, double>>
+        //        {
+        //            Success = false,
+        //            Errors = new[] { new APIError { Code = "Unauthorized", Message = "Only admins can view weekly working hours." } }
+        //        };
+        //    }
 
-            var weekStartDate = DateTime.UtcNow.StartOfWeek(DayOfWeek.Monday);
-            var queryParams = new EmployeeQueryParams { PageNumber = 1, PageSize = int.MaxValue };
-            var (employees, _) = await _unitOfWork.EmployeeRepository.GetPaginatedEmployeesAsync(queryParams);
-            var result = new Dictionary<Guid, double>();
+        //    var weekStartDate = DateTime.UtcNow.StartOfWeek(DayOfWeek.Monday);
+        //    var queryParams = new EmployeeQueryParams { PageNumber = 1, PageSize = int.MaxValue };
+        //    var employees = await _unitOfWork.EmployeeRepository.GetPaginatedEmployeesAsync(queryParams);
+        //    var result = new Dictionary<Guid, double>();
 
-            foreach (var employee in employees)
-            {
-                var attendances = await _unitOfWork.AttendanceRepository.GetWeeklyAttendanceAsync(employee.Id, weekStartDate);
-                var totalHours = attendances.Sum(a => a.WorkingHours ?? 0);
-                result[employee.Id] = totalHours;
-            }
+        //    foreach (var employee in employees)
+        //    {
+        //        var attendances = await _unitOfWork.AttendanceRepository.GetWeeklyAttendanceAsync(employee.Id, weekStartDate);
+        //        var totalHours = attendances.Sum(a => a.WorkingHours ?? 0);
+        //        result[employee.Id] = totalHours;
+        //    }
 
-            return new APIResult<Dictionary<Guid, double>>
-            {
-                Success = true,
-                Data = result
-            };
-        }
+        //    return new APIResult<Dictionary<Guid, double>>
+        //    {
+        //        Success = true,
+        //        Data = result
+        //    };
+        //}
 
         public async Task<APIResult<IEnumerable<AttendanceListDto>>> GetMonthlyAttendanceAsync(Guid employeeId, int year, int month, string userRole)
         {

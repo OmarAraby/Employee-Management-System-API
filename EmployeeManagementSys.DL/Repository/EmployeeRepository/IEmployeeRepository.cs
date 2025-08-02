@@ -15,7 +15,7 @@ namespace EmployeeManagementSys.DL
 
         Task<Employee?> GetWithAttendanceAsync(Guid employeeId);
 
-        Task<(PagedList<Employee> Items, int TotalCount)> GetPaginatedEmployeesAsync(EmployeeQueryParams queryParams);
+        Task<PagedList<Employee>> GetPaginatedEmployeesAsync(EmployeeQueryParams queryParams);
 
         // Statistics
         Task<int> GetTotalEmployeesAsync();

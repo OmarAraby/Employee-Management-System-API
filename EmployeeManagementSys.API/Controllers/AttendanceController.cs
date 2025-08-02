@@ -1,4 +1,5 @@
 ﻿using EmployeeManagementSys.BL;
+using EmployeeManagementSys.DL;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -14,6 +15,15 @@ namespace EmployeeManagementSys.API.Controllers
         public AttendanceController(IAttendanceManager attendanceManager)
         {
             _attendanceManager = attendanceManager;
+        }
+
+        [HttpGet()]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetPaginatedAttendance([FromQuery] AttendanceQueryParams queryParams)
+        {
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var result = await _attendanceManager.GetPaginatedAttendanceAsync(queryParams, userRole);
+            return result.Success ? Ok(result) : BadRequest(result);
         }
 
         [HttpPost("check-in")]
@@ -43,22 +53,30 @@ namespace EmployeeManagementSys.API.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("monthly/{employeeId}/{year}/{month}")]
+        [HttpGet("monthly/{employeeId}")]
         [Authorize(Roles = "Employee")]
-        public async Task<IActionResult> GetMonthlyAttendance(Guid employeeId, int year, int month)
+        public async Task<IActionResult> GetMonthlyAttendance(Guid employeeId, [FromQuery] int? year, [FromQuery] int? month)
         {
             var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            var result = await _attendanceManager.GetMonthlyAttendanceAsync(employeeId, year, month, userRole);
+            if (!year.HasValue || !month.HasValue)
+            {
+                return BadRequest(new APIResult<IEnumerable<AttendanceListDto>>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "ValidationError", Message = "Year and month are required query parameters." } }
+                });
+            }
+            var result = await _attendanceManager.GetMonthlyAttendanceAsync(employeeId, year.Value, month.Value, userRole);
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
-        [HttpGet("weekly-hours")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetWeeklyWorkingHours()
-        {
-            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            var result = await _attendanceManager.GetWeeklyWorkingHoursAsync(userRole);
-            return result.Success ? Ok(result) : BadRequest(result);
-        }
+        //[HttpGet("weekly-hours")]
+        //[Authorize(Roles = "Admin")]
+        //public async Task<IActionResult> GetWeeklyWorkingHours()
+        //{
+        //    var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        //    var result = await _attendanceManager.GetWeeklyWorkingHoursAsync(userRole);
+        //    return result.Success ? Ok(result) : BadRequest(result);
+        //}
     }
 }
