@@ -232,14 +232,26 @@ namespace EmployeeManagementSys.BL
             };
         }
 
-        public async Task<APIResult<EmployeeDto>> GetEmployeeProfileAsync(Guid employeeId, string userRole)
+        public async Task<APIResult<EmployeeDto>> GetEmployeeProfileAsync(Guid employeeId, string userRole, Guid callerId)
         {
-            if (userRole != "Employee")
+            // Admin may fetch any profile (the edit flow depends on it).
+            // Employee may only fetch their OWN profile — the ownership check
+            // closes the gap where any employee could read any profile by ID.
+            if (userRole != "Admin" && userRole != "Employee")
             {
                 return new APIResult<EmployeeDto>
                 {
                     Success = false,
-                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Only employees can view their profile." } }
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Not authorized to view employee profiles." } }
+                };
+            }
+
+            if (userRole == "Employee" && callerId != employeeId)
+            {
+                return new APIResult<EmployeeDto>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Employees can only view their own profile." } }
                 };
             }
 

@@ -11,7 +11,7 @@ namespace EmployeeManagementSys.BL
         Task<APIResult<bool>> DeleteEmployeeAsync(Guid id, string userRole);
         Task<APIResult<PagedList<EmployeeListDto>>> GetPaginatedEmployeesAsync(EmployeeQueryParams queryParams);
         Task<APIResult<EmployeeStatsDto>> GetEmployeeStatisticsAsync();
-        Task<APIResult<EmployeeDto>> GetEmployeeProfileAsync(Guid employeeId, string userRole);
+        Task<APIResult<EmployeeDto>> GetEmployeeProfileAsync(Guid employeeId, string userRole, Guid callerId);
 
     }
 }
