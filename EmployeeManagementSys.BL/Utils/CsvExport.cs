@@ -13,10 +13,20 @@ namespace EmployeeManagementSys.BL.Utils
         /// Escapes a single field per RFC 4180: wrap in double quotes when the
         /// value contains a comma, double quote, CR, or LF, doubling any inner
         /// quotes. Null becomes an empty field.
+        ///
+        /// Also neutralizes CSV formula injection (CWE-1236): a value beginning
+        /// with = + - @ (or tab/CR) is prefixed with a single quote so Excel/
+        /// Sheets treats it as text rather than executing it as a formula.
         /// </summary>
         public static string Field(string? value)
         {
             value ??= string.Empty;
+
+            if (value.Length > 0 && "=+-@\t\r".IndexOf(value[0]) >= 0)
+            {
+                value = "'" + value;
+            }
+
             if (value.IndexOfAny(new[] { ',', '"', '\r', '\n' }) < 0)
             {
                 return value;

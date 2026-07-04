@@ -79,12 +79,12 @@ namespace EmployeeManagementSys.API.Controllers
         {
             var userRole = User.GetRole();
             if (!User.TryGetUserId(out var callerId)) return Forbid();
-            if (!year.HasValue || !month.HasValue)
+            if (!year.HasValue || !month.HasValue || month.Value < 1 || month.Value > 12 || year.Value < 2000 || year.Value > 9999)
             {
                 return BadRequest(new APIResult<byte[]>
                 {
                     Success = false,
-                    Errors = new[] { new APIError { Code = "ValidationError", Message = "Year and month are required query parameters." } }
+                    Errors = new[] { new APIError { Code = "ValidationError", Message = "A valid year (2000-9999) and month (1-12) are required." } }
                 });
             }
             var result = await _attendanceManager.GetMonthlyAttendanceReportCsvAsync(employeeId, year.Value, month.Value, userRole, callerId);
