@@ -79,9 +79,20 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    // Seed initial admin
+    // Seed initial admin.
+    // The seed password comes from configuration (Seed:AdminPassword — supply via
+    // env var SEED__ADMINPASSWORD or user-secrets). No hardcoded credential ships
+    // in source. If it's unset, admin seeding is SKIPPED with a warning rather
+    // than falling back to a well-known default (the vulnerability this fixes).
     var adminEmail = "admin@company.com";
-    if (await userManager.FindByEmailAsync(adminEmail) == null)
+    var seedAdminPassword = app.Configuration["Seed:AdminPassword"];
+    if (string.IsNullOrWhiteSpace(seedAdminPassword))
+    {
+        app.Logger.LogWarning(
+            "Seed:AdminPassword is not configured — skipping initial admin seeding. " +
+            "Set SEED__ADMINPASSWORD (env) or the Seed:AdminPassword user-secret to seed an admin.");
+    }
+    else if (await userManager.FindByEmailAsync(adminEmail) == null)
     {
         var admin = new Employee
         {
@@ -95,10 +106,16 @@ using (var scope = app.Services.CreateScope())
             Status = EmployeeStatus.Active,
             RequiresPasswordReset = true
         };
-        var result = await userManager.CreateAsync(admin, "Admin@123");
+        var result = await userManager.CreateAsync(admin, seedAdminPassword);
         if (result.Succeeded)
         {
             await userManager.AddToRoleAsync(admin, "Admin");
+        }
+        else
+        {
+            app.Logger.LogError(
+                "Failed to seed initial admin: {Errors}",
+                string.Join("; ", result.Errors.Select(e => e.Description)));
         }
     }
 }
