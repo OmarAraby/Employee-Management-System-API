@@ -2,6 +2,7 @@ using EmployeeManagementSys.API.HandleFiles;
 using EmployeeManagementSys.BL;
 using EmployeeManagementSys.DL;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -59,6 +60,12 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+
+    // Apply pending EF migrations before seeding — containers start against an
+    // empty SQL Server, so the schema must exist before roles/admin are created.
+    var dbContext = services.GetRequiredService<EmployeeManagementSysDbContext>();
+    await dbContext.Database.MigrateAsync();
+
     var userManager = services.GetRequiredService<UserManager<Employee>>();
     var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
 
