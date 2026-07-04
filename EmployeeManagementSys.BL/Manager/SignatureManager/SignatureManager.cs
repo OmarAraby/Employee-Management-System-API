@@ -12,16 +12,26 @@ namespace EmployeeManagementSys.BL
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         }
 
-        public async Task<APIResult<SignatureDto>> UploadSignature(Guid empId, SignatureCreateDto dto)
+        public async Task<APIResult<SignatureDto>> UploadSignature(Guid empId, SignatureCreateDto dto, string userRole, Guid callerId)
         {
-            
-            string userRole = "Employee"; // 
+            // Admin may upload any employee's signature; an Employee may upload
+            // only their OWN. Previously userRole was hard-coded to "Employee",
+            // so the check was a no-op and any employee could overwrite anyone's
+            // signature (IDOR / tampering).
             if (userRole != "Employee" && userRole != "Admin")
             {
                 return new APIResult<SignatureDto>
                 {
                     Success = false,
                     Errors = new[] { new APIError { Code = "Unauthorized", Message = "Only employees or admins can upload signatures." } }
+                };
+            }
+            if (userRole == "Employee" && callerId != empId)
+            {
+                return new APIResult<SignatureDto>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Employees can only upload their own signature." } }
                 };
             }
 
@@ -77,16 +87,25 @@ namespace EmployeeManagementSys.BL
             };
         }
 
-        public async Task<APIResult<SignatureDto>> GetSignaturesForEmployee(Guid empId)
+        public async Task<APIResult<SignatureDto>> GetSignaturesForEmployee(Guid empId, string userRole, Guid callerId)
         {
-          
-            string userRole = "Employee"; 
+            // Admin may view any employee's signature; an Employee may view only
+            // their OWN. Previously userRole was hard-coded, so any employee
+            // could read another's signature (IDOR / PII disclosure).
             if (userRole != "Employee" && userRole != "Admin")
             {
                 return new APIResult<SignatureDto>
                 {
                     Success = false,
                     Errors = new[] { new APIError { Code = "Unauthorized", Message = "Only employees or admins can view signatures." } }
+                };
+            }
+            if (userRole == "Employee" && callerId != empId)
+            {
+                return new APIResult<SignatureDto>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Employees can only view their own signature." } }
                 };
             }
 
