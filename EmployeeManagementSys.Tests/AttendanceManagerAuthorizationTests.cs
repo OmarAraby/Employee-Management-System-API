@@ -141,7 +141,10 @@ public class AttendanceManagerAuthorizationTests
             AttendanceId = Guid.NewGuid(),
             EmployeeId = caller,
             CheckInDate = DateTime.UtcNow.Date,
-            CheckInTime = new TimeSpan(8, 0, 0),
+            // Midnight check-in so WorkingHours = (checkout-time-of-day − 0) is
+            // non-negative regardless of the real wall-clock the manager reads
+            // (the manager computes checkout time itself; the test can't inject it).
+            CheckInTime = TimeSpan.Zero,
             CheckOutTime = null
         };
         var uow = new Mock<IUnitOfWork>();
@@ -161,7 +164,7 @@ public class AttendanceManagerAuthorizationTests
         // The manager set CheckOutTime + WorkingHours on the record before persisting.
         Assert.True(record.CheckOutTime.HasValue);
         Assert.NotNull(record.WorkingHours);
-        Assert.True(record.WorkingHours > 0);
+        Assert.True(record.WorkingHours >= 0); // wall-clock-independent (check-in at midnight)
         attendanceRepo.Verify(r => r.UpdateAsync(record), Times.Once);
         uow.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
