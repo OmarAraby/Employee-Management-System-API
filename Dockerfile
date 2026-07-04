@@ -2,12 +2,13 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Restore layers cache-friendly: solution + csproj files first
-COPY EmployeeManagementSys.API.sln ./
+# Restore layers cache-friendly: csproj files first.
+# Restore the API PROJECT (not the .sln) so the test project — which is in the
+# solution but not part of the runtime image — is never pulled into the build.
 COPY EmployeeManagementSys.API/EmployeeManagementSys.API.csproj EmployeeManagementSys.API/
 COPY EmployeeManagementSys.BL/EmployeeManagementSys.BL.csproj EmployeeManagementSys.BL/
 COPY EmployeeManagementSys.DL/EmployeeManagementSys.DL.csproj EmployeeManagementSys.DL/
-RUN dotnet restore EmployeeManagementSys.API.sln
+RUN dotnet restore EmployeeManagementSys.API/EmployeeManagementSys.API.csproj
 
 COPY . .
 RUN dotnet publish EmployeeManagementSys.API/EmployeeManagementSys.API.csproj -c Release -o /app/publish /p:UseAppHost=false

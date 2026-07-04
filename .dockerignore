@@ -1,5 +1,7 @@
 **/bin/
 **/obj/
+EmployeeManagementSys.Tests/
+**/TestResults/
 **/.vs/
 **/.git/
 **/Upload/

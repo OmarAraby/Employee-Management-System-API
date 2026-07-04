@@ -368,3 +368,6 @@ FodyWeavers.xsd
 
 # apexyard session markers (never commit)
 .claude/
+
+# test artifacts
+[Tt]est[Rr]esults/
