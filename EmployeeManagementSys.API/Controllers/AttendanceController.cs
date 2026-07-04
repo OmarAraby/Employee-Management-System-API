@@ -31,16 +31,18 @@ namespace EmployeeManagementSys.API.Controllers
         public async Task<IActionResult> CheckIn([FromBody] CheckInDto checkInDto)
         {
             var userRole = User.GetRole();
-            var result = await _attendanceManager.CheckInAsync(checkInDto, userRole);
+            if (!User.TryGetUserId(out var callerId)) return Forbid();
+            var result = await _attendanceManager.CheckInAsync(checkInDto, userRole, callerId);
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
         [HttpGet("weekly/{employeeId}")]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Employee,Admin")]
         public async Task<IActionResult> GetWeeklyAttendance(Guid employeeId)
         {
             var userRole = User.GetRole();
-            var result = await _attendanceManager.GetWeeklyAttendanceAsync(employeeId, userRole);
+            if (!User.TryGetUserId(out var callerId)) return Forbid();
+            var result = await _attendanceManager.GetWeeklyAttendanceAsync(employeeId, userRole, callerId);
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
@@ -54,10 +56,11 @@ namespace EmployeeManagementSys.API.Controllers
         }
 
         [HttpGet("monthly/{employeeId}")]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Employee,Admin")]
         public async Task<IActionResult> GetMonthlyAttendance(Guid employeeId, [FromQuery] int? year, [FromQuery] int? month)
         {
             var userRole = User.GetRole();
+            if (!User.TryGetUserId(out var callerId)) return Forbid();
             if (!year.HasValue || !month.HasValue)
             {
                 return BadRequest(new APIResult<IEnumerable<AttendanceListDto>>
@@ -66,7 +69,7 @@ namespace EmployeeManagementSys.API.Controllers
                     Errors = new[] { new APIError { Code = "ValidationError", Message = "Year and month are required query parameters." } }
                 });
             }
-            var result = await _attendanceManager.GetMonthlyAttendanceAsync(employeeId, year.Value, month.Value, userRole);
+            var result = await _attendanceManager.GetMonthlyAttendanceAsync(employeeId, year.Value, month.Value, userRole, callerId);
             return result.Success ? Ok(result) : BadRequest(result);
         }
 

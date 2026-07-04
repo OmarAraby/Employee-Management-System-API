@@ -14,7 +14,7 @@ namespace EmployeeManagementSys.BL
             _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
-        public async Task<APIResult<CheckInResponseDto>> CheckInAsync(CheckInDto checkInDto, string userRole)
+        public async Task<APIResult<CheckInResponseDto>> CheckInAsync(CheckInDto checkInDto, string userRole, Guid callerId)
         {
             if (userRole != "Employee")
             {
@@ -24,6 +24,11 @@ namespace EmployeeManagementSys.BL
                     Errors = new[] { new APIError { Code = "Unauthorized", Message = "Only employees can check in." } }
                 };
             }
+
+            // Ownership: an employee may only check IN THEMSELVES. Trust the
+            // caller's identity from the token, never the EmployeeId in the
+            // request body (which previously allowed check-in spoofing).
+            checkInDto.EmployeeId = callerId;
 
             var validationResult = await _validator.ValidateAsync(checkInDto);
             if (!validationResult.IsValid)
@@ -113,14 +118,25 @@ namespace EmployeeManagementSys.BL
                 }
             };
         }
-        public async Task<APIResult<IEnumerable<AttendanceListDto>>> GetWeeklyAttendanceAsync(Guid employeeId, string userRole)
+        public async Task<APIResult<IEnumerable<AttendanceListDto>>> GetWeeklyAttendanceAsync(Guid employeeId, string userRole, Guid callerId)
         {
-            if (userRole != "Employee")
+            // Admin may view any employee's attendance; an Employee may view
+            // only their OWN. Closes the IDOR where any employee could read
+            // another's attendance by passing a foreign employeeId.
+            if (userRole != "Admin" && userRole != "Employee")
             {
                 return new APIResult<IEnumerable<AttendanceListDto>>
                 {
                     Success = false,
-                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Only employees can view their attendance." } }
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Not authorized to view attendance." } }
+                };
+            }
+            if (userRole == "Employee" && callerId != employeeId)
+            {
+                return new APIResult<IEnumerable<AttendanceListDto>>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Employees can only view their own attendance." } }
                 };
             }
 
@@ -253,14 +269,24 @@ namespace EmployeeManagementSys.BL
         //    };
         //}
 
-        public async Task<APIResult<IEnumerable<AttendanceListDto>>> GetMonthlyAttendanceAsync(Guid employeeId, int year, int month, string userRole)
+        public async Task<APIResult<IEnumerable<AttendanceListDto>>> GetMonthlyAttendanceAsync(Guid employeeId, int year, int month, string userRole, Guid callerId)
         {
-            if (userRole != "Employee")
+            // Admin may view any employee's attendance; an Employee may view
+            // only their OWN.
+            if (userRole != "Admin" && userRole != "Employee")
             {
                 return new APIResult<IEnumerable<AttendanceListDto>>
                 {
                     Success = false,
-                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Only employees can view their attendance." } }
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Not authorized to view attendance." } }
+                };
+            }
+            if (userRole == "Employee" && callerId != employeeId)
+            {
+                return new APIResult<IEnumerable<AttendanceListDto>>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Employees can only view their own attendance." } }
                 };
             }
 

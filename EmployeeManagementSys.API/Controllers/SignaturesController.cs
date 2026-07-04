@@ -1,4 +1,5 @@
 ﻿using EmployeeManagementSys.BL;
+using EmployeeManagementSys.API.Extensions;
 using EmployeeManagementSys.API.HandleFiles;
 
 using Microsoft.AspNetCore.Authorization;
@@ -37,34 +38,47 @@ public class SignatureController : ControllerBase
                 });
             }
 
+            var userRole = User.GetRole();
+            if (!User.TryGetUserId(out var callerId))
+            {
+                return TypedResults.BadRequest(new APIResult<SignatureDto>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Caller identity could not be determined." } }
+                });
+            }
+
             var uploadResult = await _fileService.UploadFileAsync(fileRequest.File);
             var dto = new SignatureCreateDto
             {
                 FileName = fileRequest.File.FileName,
                 FileUrl = uploadResult.FileUrl,
-                EmployeeId = empId 
+                EmployeeId = empId
             };
 
-            var result = await _signatureManager.UploadSignature(empId, dto);
+            var result = await _signatureManager.UploadSignature(empId, dto, userRole, callerId);
             return result.Success
                 ? TypedResults.Ok(result)
                 : TypedResults.BadRequest(result);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
+            // Do not leak the raw exception message to the client (CWE-209).
             return TypedResults.BadRequest(new APIResult<SignatureDto>
             {
                 Success = false,
-                Errors = new[] { new APIError { Code = "FILE_UPLOAD_ERROR", Message = ex.Message } }
+                Errors = new[] { new APIError { Code = "FILE_UPLOAD_ERROR", Message = "The signature could not be uploaded. Please try again." } }
             });
         }
     }
 
     [HttpGet("{empId}")]
     [Authorize(Roles = "Employee,Admin")]
-    public async Task<Results<Ok<APIResult<SignatureDto>>, NotFound<APIResult<SignatureDto>>>> GetSignaturesForEmployee(Guid empId)
+    public async Task<Results<Ok<APIResult<SignatureDto>>, NotFound<APIResult<SignatureDto>>, ForbidHttpResult>> GetSignaturesForEmployee(Guid empId)
     {
-        var result = await _signatureManager.GetSignaturesForEmployee(empId);
+        var userRole = User.GetRole();
+        if (!User.TryGetUserId(out var callerId)) return TypedResults.Forbid();
+        var result = await _signatureManager.GetSignaturesForEmployee(empId, userRole, callerId);
         return result.Success
             ? TypedResults.Ok(result)
             : TypedResults.NotFound(result);
