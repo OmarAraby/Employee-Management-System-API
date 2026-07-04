@@ -36,6 +36,16 @@ namespace EmployeeManagementSys.API.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
+        [HttpPost("check-out")]
+        [Authorize(Roles = "Employee")]
+        public async Task<IActionResult> CheckOut()
+        {
+            var userRole = User.GetRole();
+            if (!User.TryGetUserId(out var callerId)) return Forbid();
+            var result = await _attendanceManager.CheckOutAsync(userRole, callerId);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
         [HttpGet("weekly/{employeeId}")]
         [Authorize(Roles = "Employee,Admin")]
         public async Task<IActionResult> GetWeeklyAttendance(Guid employeeId)

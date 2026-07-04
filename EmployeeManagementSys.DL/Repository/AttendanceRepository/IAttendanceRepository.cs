@@ -6,6 +6,7 @@ public interface IAttendanceRepository
 {
     Task<Attendance> GetByIdAsync(Guid id);
     Task<Attendance> AddAsync(Attendance attendance);
+    Task<Attendance?> UpdateAsync(Attendance attendance);
     Task<bool> DeleteAsync(Guid id);
 
     // daily attendance

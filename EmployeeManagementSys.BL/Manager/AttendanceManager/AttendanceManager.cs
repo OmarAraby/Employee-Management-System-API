@@ -42,22 +42,7 @@ namespace EmployeeManagementSys.BL
             }
 
             var now = DateTime.UtcNow;
-            TimeZoneInfo egyptTimeZone;
-            try
-            {
-                egyptTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Egypt Standard Time");
-            }
-            catch (TimeZoneNotFoundException)
-            {
-                // Fallback to UTC+2 if time zone is not found (manual offset)
-                egyptTimeZone = TimeZoneInfo.CreateCustomTimeZone(
-                    "Egypt Custom Time",
-                    TimeSpan.FromHours(2),
-                    "Egypt Standard Time",
-                    "Egypt Standard Time"
-                );
-            }
-            var localTime = TimeZoneInfo.ConvertTimeFromUtc(now, egyptTimeZone);
+            var localTime = TimeZoneInfo.ConvertTimeFromUtc(now, GetEgyptTimeZone());
             var checkInTime = localTime.TimeOfDay;
 
             if (checkInTime < new TimeSpan(7, 30, 0) || checkInTime > new TimeSpan(9, 0, 0))
@@ -119,6 +104,90 @@ namespace EmployeeManagementSys.BL
                 }
             };
         }
+        // Egypt local time (UTC+2), with a manual-offset fallback when the OS
+        // lacks the named time zone (e.g. minimal container images).
+        private static TimeZoneInfo GetEgyptTimeZone()
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById("Egypt Standard Time");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                return TimeZoneInfo.CreateCustomTimeZone(
+                    "Egypt Custom Time",
+                    TimeSpan.FromHours(2),
+                    "Egypt Standard Time",
+                    "Egypt Standard Time");
+            }
+        }
+
+        public async Task<APIResult<CheckInResponseDto>> CheckOutAsync(string userRole, Guid callerId)
+        {
+            if (userRole != "Employee")
+            {
+                return new APIResult<CheckInResponseDto>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Only employees can check out." } }
+                };
+            }
+
+            // Ownership: check out the CALLER's own record (identity from token).
+            var attendance = await _unitOfWork.AttendanceRepository.GetTodayAttendanceAsync(callerId);
+            if (attendance == null)
+            {
+                return new APIResult<CheckInResponseDto>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "NotCheckedIn", Message = "You must check in before checking out." } }
+                };
+            }
+            if (attendance.CheckOutTime.HasValue)
+            {
+                return new APIResult<CheckInResponseDto>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "AlreadyCheckedOut", Message = "You have already checked out today." } }
+                };
+            }
+
+            var localTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, GetEgyptTimeZone());
+            var checkOutTime = localTime.TimeOfDay;
+            attendance.CheckOutTime = checkOutTime;
+            attendance.WorkingHours = (checkOutTime - attendance.CheckInTime).TotalHours;
+
+            await _unitOfWork.AttendanceRepository.UpdateAsync(attendance);
+            await _unitOfWork.SaveChangesAsync();
+
+            var employee = await _unitOfWork.EmployeeRepository.GetByIDAsync(attendance.EmployeeId);
+            return new APIResult<CheckInResponseDto>
+            {
+                Success = true,
+                Data = new CheckInResponseDto
+                {
+                    Success = true,
+                    Message = "Check-out successful",
+                    Attendance = new AttendanceDto
+                    {
+                        AttendanceId = attendance.AttendanceId,
+                        EmployeeId = attendance.EmployeeId,
+                        EmployeeFullName = employee?.FullName,
+                        EmployeeEmail = employee?.Email,
+                        CheckInDate = attendance.CheckInDate,
+                        CheckInTime = attendance.CheckInTime,
+                        CheckInDateString = attendance.CheckInDateString,
+                        CheckInTimeString = attendance.CheckInTimeString,
+                        IsOnTime = attendance.IsOnTime,
+                        Status = attendance.Status,
+                        StatusDisplayName = AttendanceExtensions.GetStatusDisplayName(attendance)
+                    },
+                    CheckInTime = attendance.CheckInTime,
+                    CheckInDate = attendance.CheckInDate
+                }
+            };
+        }
+
         public async Task<APIResult<IEnumerable<AttendanceListDto>>> GetWeeklyAttendanceAsync(Guid employeeId, string userRole, Guid callerId)
         {
             // Admin may view any employee's attendance; an Employee may view

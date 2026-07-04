@@ -31,6 +31,15 @@ public class AttendanceRepository : IAttendanceRepository
         return true;
     }
 
+    public async Task<Attendance?> UpdateAsync(Attendance attendance)
+    {
+        var existing = await _context.Attendances.FindAsync(attendance.AttendanceId);
+        if (existing == null) return null;
+
+        _context.Entry(existing).CurrentValues.SetValues(attendance);
+        return existing;
+    }
+
     public async Task<Attendance?> GetByEmployeeIdAndDateAsync(Guid employeeId, DateTime date)
     {
         var checkInDate = DateOnly.FromDateTime(date);
