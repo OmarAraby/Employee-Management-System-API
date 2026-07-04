@@ -78,4 +78,32 @@ public class AttendanceManagerAuthorizationTests
         Assert.False(result.Success);
         uow.VerifyNoOtherCalls();
     }
+
+    [Fact]
+    public async Task CheckOut_NonEmployeeRole_IsDenied()
+    {
+        var mgr = BuildManager(out var uow);
+
+        var result = await mgr.CheckOutAsync("Admin", Guid.NewGuid());
+
+        Assert.False(result.Success);
+        uow.VerifyNoOtherCalls(); // role denial before any repo access
+    }
+
+    [Fact]
+    public async Task CheckOut_NotCheckedInToday_IsDenied()
+    {
+        // Loose mock: this path DOES touch the repo (to look for today's record).
+        var uow = new Mock<IUnitOfWork>();
+        var attendanceRepo = new Mock<IAttendanceRepository>();
+        attendanceRepo.Setup(r => r.GetTodayAttendanceAsync(It.IsAny<Guid>()))
+                      .ReturnsAsync((Attendance?)null);
+        uow.SetupGet(u => u.AttendanceRepository).Returns(attendanceRepo.Object);
+        var mgr = new AttendanceManager(uow.Object, new CheckInDtoValidator());
+
+        var result = await mgr.CheckOutAsync("Employee", Guid.NewGuid());
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors!, e => e.Code == "NotCheckedIn");
+    }
 }
