@@ -54,11 +54,16 @@ namespace EmployeeManagementSys.API.Controllers
         }
 
         [HttpGet("profile/{employeeId}")]
-        [Authorize(Roles = "Employee")]
+        [Authorize(Roles = "Employee,Admin")]
         public async Task<IActionResult> GetEmployeeProfile(Guid employeeId)
         {
             var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            var result = await _employeeManager.GetEmployeeProfileAsync(employeeId, userRole);
+            // Caller identity for the ownership check — employees may only read their own profile.
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            {
+                return Forbid();
+            }
+            var result = await _employeeManager.GetEmployeeProfileAsync(employeeId, userRole, callerId);
             return result.Success ? Ok(result) : BadRequest(result);
         }
     }
