@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.git/
+**/Upload/
+docker-compose.yml
+.env
+.env.example
+README.md

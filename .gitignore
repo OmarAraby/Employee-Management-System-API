@@ -363,3 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 
 /Baltoo.Test
+# compose secrets stay local
+.env

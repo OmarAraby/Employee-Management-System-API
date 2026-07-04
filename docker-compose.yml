@@ -1,0 +1,51 @@
+# EMS pair — single-command local deployment (initiative: ems-completion, ticket #4)
+#
+#   1. cp .env.example .env   (fill in the values — .env is git-ignored)
+#   2. docker compose up --build
+#   3. Web app on http://localhost:8085 — nginx proxies /api to the API container
+#
+# The Angular client is built from its SIBLING clone. Default assumes the GitHub
+# clone name; override NG_BUILD_CONTEXT in .env if your directory differs.
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  api:
+    build: .
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Full connection string assembled in .env so no credential fragments live in tracked files
+      ConnectionStrings__db: ${EMS_DB_CONNECTION:?set EMS_DB_CONNECTION in .env}
+      JWT__Issuer: ${JWT_ISSUER:?set JWT_ISSUER in .env}
+      JWT__Audience: ${JWT_AUDIENCE:?set JWT_AUDIENCE in .env}
+      JWT__IssuerSigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - upload-data:/app/Upload
+    ports:
+      - "8080:8080"   # direct API access for debugging; the web app uses the nginx proxy
+
+  web:
+    build: ${NG_BUILD_CONTEXT:-../Employee-Management-System-ng}
+    depends_on:
+      - api
+    ports:
+      - "8085:80"
+
+volumes:
+  mssql-data:
+  upload-data:
