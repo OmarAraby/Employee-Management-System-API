@@ -53,6 +53,14 @@ namespace EmployeeManagementSys.API.Controllers
             return Ok(result);
         }
 
+        [HttpGet("statistics")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetEmployeeStatistics()
+        {
+            var result = await _employeeManager.GetEmployeeStatisticsAsync();
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
         [HttpGet("profile/{employeeId}")]
         [Authorize(Roles = "Employee,Admin")]
         public async Task<IActionResult> GetEmployeeProfile(Guid employeeId)
