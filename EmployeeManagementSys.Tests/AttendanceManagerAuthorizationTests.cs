@@ -106,4 +106,63 @@ public class AttendanceManagerAuthorizationTests
         Assert.False(result.Success);
         Assert.Contains(result.Errors!, e => e.Code == "NotCheckedIn");
     }
+
+    [Fact]
+    public async Task CheckOut_AlreadyCheckedOut_IsDenied()
+    {
+        var caller = Guid.NewGuid();
+        var uow = new Mock<IUnitOfWork>();
+        var attendanceRepo = new Mock<IAttendanceRepository>();
+        attendanceRepo.Setup(r => r.GetTodayAttendanceAsync(caller))
+                      .ReturnsAsync(new Attendance
+                      {
+                          AttendanceId = Guid.NewGuid(),
+                          EmployeeId = caller,
+                          CheckInDate = DateTime.UtcNow.Date,
+                          CheckInTime = new TimeSpan(8, 0, 0),
+                          CheckOutTime = new TimeSpan(17, 0, 0) // already checked out
+                      });
+        uow.SetupGet(u => u.AttendanceRepository).Returns(attendanceRepo.Object);
+        var mgr = new AttendanceManager(uow.Object, new CheckInDtoValidator());
+
+        var result = await mgr.CheckOutAsync("Employee", caller);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Errors!, e => e.Code == "AlreadyCheckedOut");
+        attendanceRepo.Verify(r => r.UpdateAsync(It.IsAny<Attendance>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CheckOut_HappyPath_SetsCheckOutAndWorkingHours()
+    {
+        var caller = Guid.NewGuid();
+        var record = new Attendance
+        {
+            AttendanceId = Guid.NewGuid(),
+            EmployeeId = caller,
+            CheckInDate = DateTime.UtcNow.Date,
+            CheckInTime = new TimeSpan(8, 0, 0),
+            CheckOutTime = null
+        };
+        var uow = new Mock<IUnitOfWork>();
+        var attendanceRepo = new Mock<IAttendanceRepository>();
+        var employeeRepo = new Mock<IEmployeeRepository>();
+        attendanceRepo.Setup(r => r.GetTodayAttendanceAsync(caller)).ReturnsAsync(record);
+        attendanceRepo.Setup(r => r.UpdateAsync(It.IsAny<Attendance>())).ReturnsAsync(record);
+        employeeRepo.Setup(r => r.GetByIDAsync(caller)).ReturnsAsync((Employee?)null);
+        uow.SetupGet(u => u.AttendanceRepository).Returns(attendanceRepo.Object);
+        uow.SetupGet(u => u.EmployeeRepository).Returns(employeeRepo.Object);
+        uow.Setup(u => u.SaveChangesAsync()).ReturnsAsync(1);
+        var mgr = new AttendanceManager(uow.Object, new CheckInDtoValidator());
+
+        var result = await mgr.CheckOutAsync("Employee", caller);
+
+        Assert.True(result.Success);
+        // The manager set CheckOutTime + WorkingHours on the record before persisting.
+        Assert.True(record.CheckOutTime.HasValue);
+        Assert.NotNull(record.WorkingHours);
+        Assert.True(record.WorkingHours > 0);
+        attendanceRepo.Verify(r => r.UpdateAsync(record), Times.Once);
+        uow.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
 }
