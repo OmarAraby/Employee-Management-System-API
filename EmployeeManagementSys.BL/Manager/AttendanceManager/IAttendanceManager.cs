@@ -13,6 +13,7 @@ namespace EmployeeManagementSys.BL
         Task<APIResult<IEnumerable<AttendanceListDto>>> GetDailyAttendanceListAsync(string userRole);
         //Task<APIResult<Dictionary<Guid, double>>> GetWeeklyWorkingHoursAsync(string userRole);
         Task<APIResult<IEnumerable<AttendanceListDto>>> GetMonthlyAttendanceAsync(Guid employeeId, int year, int month, string userRole, Guid callerId);
+        Task<APIResult<byte[]>> GetMonthlyAttendanceReportCsvAsync(Guid employeeId, int year, int month, string userRole, Guid callerId);
     }
 
 }

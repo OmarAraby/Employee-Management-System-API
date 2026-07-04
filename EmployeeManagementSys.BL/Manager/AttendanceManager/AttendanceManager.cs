@@ -1,4 +1,5 @@
-﻿using EmployeeManagementSys.DL;
+﻿using EmployeeManagementSys.BL.Utils;
+using EmployeeManagementSys.DL;
 
 
 namespace EmployeeManagementSys.BL
@@ -312,6 +313,33 @@ namespace EmployeeManagementSys.BL
                 Success = true,
                 Data = dtoList
             };
+        }
+
+        public async Task<APIResult<byte[]>> GetMonthlyAttendanceReportCsvAsync(Guid employeeId, int year, int month, string userRole, Guid callerId)
+        {
+            // Reuse the monthly query — it carries the same Admin→any / Employee→own
+            // authorization, so the report can never expose data the JSON endpoint wouldn't.
+            var data = await GetMonthlyAttendanceAsync(employeeId, year, month, userRole, callerId);
+            if (!data.Success)
+            {
+                return new APIResult<byte[]> { Success = false, Errors = data.Errors };
+            }
+
+            var lines = new List<string>
+            {
+                CsvExport.Row("Employee", "Date", "Check-In Time", "On Time", "Status")
+            };
+            foreach (var a in data.Data!)
+            {
+                lines.Add(CsvExport.Row(
+                    a.EmployeeFullName,
+                    a.CheckInDate.ToString("yyyy-MM-dd"),
+                    a.CheckInTime.ToString(@"hh\:mm"),
+                    a.IsOnTime ? "Yes" : "No",
+                    a.StatusDisplayName));
+            }
+
+            return new APIResult<byte[]> { Success = true, Data = CsvExport.ToUtf8Bytes(lines) };
         }
     }
 

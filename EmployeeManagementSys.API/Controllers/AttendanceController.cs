@@ -73,6 +73,29 @@ namespace EmployeeManagementSys.API.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
+        [HttpGet("monthly/{employeeId}/report")]
+        [Authorize(Roles = "Employee,Admin")]
+        public async Task<IActionResult> GetMonthlyAttendanceReport(Guid employeeId, [FromQuery] int? year, [FromQuery] int? month)
+        {
+            var userRole = User.GetRole();
+            if (!User.TryGetUserId(out var callerId)) return Forbid();
+            if (!year.HasValue || !month.HasValue)
+            {
+                return BadRequest(new APIResult<byte[]>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "ValidationError", Message = "Year and month are required query parameters." } }
+                });
+            }
+            var result = await _attendanceManager.GetMonthlyAttendanceReportCsvAsync(employeeId, year.Value, month.Value, userRole, callerId);
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+            var fileName = $"attendance-{year.Value:D4}-{month.Value:D2}.csv";
+            return File(result.Data!, "text/csv", fileName);
+        }
+
         //[HttpGet("weekly-hours")]
         //[Authorize(Roles = "Admin")]
         //public async Task<IActionResult> GetWeeklyWorkingHours()
