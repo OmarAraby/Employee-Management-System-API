@@ -49,7 +49,16 @@ namespace EmployeeManagementSys.BL.Utils
             {
                 sb.Append(line).Append("\r\n");
             }
-            return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(sb.ToString());
+
+            // GetBytes() never emits the BOM (the encoder flag only affects
+            // GetPreamble()), so prepend the preamble explicitly.
+            var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
+            var preamble = encoding.GetPreamble();
+            var body = encoding.GetBytes(sb.ToString());
+            var result = new byte[preamble.Length + body.Length];
+            Buffer.BlockCopy(preamble, 0, result, 0, preamble.Length);
+            Buffer.BlockCopy(body, 0, result, preamble.Length, body.Length);
+            return result;
         }
     }
 }
