@@ -1,8 +1,8 @@
-﻿using EmployeeManagementSys.BL;
+﻿using EmployeeManagementSys.API.Extensions;
+using EmployeeManagementSys.BL;
 using EmployeeManagementSys.DL;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace EmployeeManagementSys.API.Controllers
 {
@@ -21,7 +21,7 @@ namespace EmployeeManagementSys.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AddEmployee([FromBody] CreateEmployeeDto createDto)
         {
-            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var userRole = User.GetRole();
             var result = await _employeeManager.AddEmployeeAsync(createDto, userRole);
             return result.Success ? Ok(result) : BadRequest(result);
         }
@@ -30,7 +30,7 @@ namespace EmployeeManagementSys.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateEmployee(Guid id, [FromBody] EmployeeDto updateDto)
         {
-            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var userRole = User.GetRole();
             updateDto.Id = id;
             var result = await _employeeManager.UpdateEmployeeAsync(updateDto, userRole);
             return result.Success ? Ok(result) : BadRequest(result);
@@ -40,7 +40,7 @@ namespace EmployeeManagementSys.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteEmployee(Guid id)
         {
-            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var userRole = User.GetRole();
             var result = await _employeeManager.DeleteEmployeeAsync(id, userRole);
             return result.Success ? Ok(result) : BadRequest(result);
         }
@@ -57,9 +57,9 @@ namespace EmployeeManagementSys.API.Controllers
         [Authorize(Roles = "Employee,Admin")]
         public async Task<IActionResult> GetEmployeeProfile(Guid employeeId)
         {
-            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var userRole = User.GetRole();
             // Caller identity for the ownership check — employees may only read their own profile.
-            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var callerId))
+            if (!User.TryGetUserId(out var callerId))
             {
                 return Forbid();
             }

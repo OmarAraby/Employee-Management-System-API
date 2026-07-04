@@ -365,3 +365,6 @@ FodyWeavers.xsd
 /Baltoo.Test
 # compose secrets stay local
 .env
+
+# apexyard session markers (never commit)
+.claude/
