@@ -1,5 +1,6 @@
 using EmployeeManagementSys.BL;
 using EmployeeManagementSys.DL;
+using Microsoft.Extensions.Configuration;
 using Moq;
 using Xunit;
 
@@ -15,7 +16,7 @@ public class AttendanceManagerAuthorizationTests
     private static AttendanceManager BuildManager(out Mock<IUnitOfWork> uow)
     {
         uow = new Mock<IUnitOfWork>(MockBehavior.Strict);
-        return new AttendanceManager(uow.Object, new CheckInDtoValidator());
+        return new AttendanceManager(uow.Object, new CheckInDtoValidator(), new ConfigurationBuilder().Build());
     }
 
     [Fact]
@@ -91,6 +92,41 @@ public class AttendanceManagerAuthorizationTests
     }
 
     [Fact]
+    public async Task Today_UnknownRole_IsDenied()
+    {
+        var mgr = BuildManager(out var uow);
+
+        var result = await mgr.GetTodayAttendanceAsync("", Guid.NewGuid());
+
+        Assert.False(result.Success);
+        uow.VerifyNoOtherCalls(); // denied before touching the repo
+    }
+
+    [Fact]
+    public void CheckInWindow_DefaultsWhenConfigUnset()
+    {
+        var mgr = BuildManager(out _); // empty config
+        var (start, end) = mgr.GetCheckInWindow();
+        Assert.Equal(new TimeSpan(7, 30, 0), start);
+        Assert.Equal(new TimeSpan(9, 0, 0), end);
+    }
+
+    [Fact]
+    public void CheckInWindow_ReadsConfiguredValues()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Attendance:CheckInStart"] = "06:00",
+            ["Attendance:CheckInEnd"] = "11:30"
+        }).Build();
+        var mgr = new AttendanceManager(new Mock<IUnitOfWork>().Object, new CheckInDtoValidator(), config);
+
+        var (start, end) = mgr.GetCheckInWindow();
+        Assert.Equal(new TimeSpan(6, 0, 0), start);
+        Assert.Equal(new TimeSpan(11, 30, 0), end);
+    }
+
+    [Fact]
     public async Task CheckOut_NotCheckedInToday_IsDenied()
     {
         // Loose mock: this path DOES touch the repo (to look for today's record).
@@ -99,7 +135,7 @@ public class AttendanceManagerAuthorizationTests
         attendanceRepo.Setup(r => r.GetTodayAttendanceAsync(It.IsAny<Guid>()))
                       .ReturnsAsync((Attendance?)null);
         uow.SetupGet(u => u.AttendanceRepository).Returns(attendanceRepo.Object);
-        var mgr = new AttendanceManager(uow.Object, new CheckInDtoValidator());
+        var mgr = new AttendanceManager(uow.Object, new CheckInDtoValidator(), new ConfigurationBuilder().Build());
 
         var result = await mgr.CheckOutAsync("Employee", Guid.NewGuid());
 
@@ -123,7 +159,7 @@ public class AttendanceManagerAuthorizationTests
                           CheckOutTime = new TimeSpan(17, 0, 0) // already checked out
                       });
         uow.SetupGet(u => u.AttendanceRepository).Returns(attendanceRepo.Object);
-        var mgr = new AttendanceManager(uow.Object, new CheckInDtoValidator());
+        var mgr = new AttendanceManager(uow.Object, new CheckInDtoValidator(), new ConfigurationBuilder().Build());
 
         var result = await mgr.CheckOutAsync("Employee", caller);
 
@@ -156,7 +192,7 @@ public class AttendanceManagerAuthorizationTests
         uow.SetupGet(u => u.AttendanceRepository).Returns(attendanceRepo.Object);
         uow.SetupGet(u => u.EmployeeRepository).Returns(employeeRepo.Object);
         uow.Setup(u => u.SaveChangesAsync()).ReturnsAsync(1);
-        var mgr = new AttendanceManager(uow.Object, new CheckInDtoValidator());
+        var mgr = new AttendanceManager(uow.Object, new CheckInDtoValidator(), new ConfigurationBuilder().Build());
 
         var result = await mgr.CheckOutAsync("Employee", caller);
 

@@ -1,5 +1,6 @@
 ﻿using EmployeeManagementSys.BL.Utils;
 using EmployeeManagementSys.DL;
+using Microsoft.Extensions.Configuration;
 
 
 namespace EmployeeManagementSys.BL
@@ -8,11 +9,69 @@ namespace EmployeeManagementSys.BL
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly CheckInDtoValidator _validator;
+        private readonly IConfiguration _configuration;
 
-        public AttendanceManager(IUnitOfWork unitOfWork, CheckInDtoValidator validator)
+        private static readonly TimeSpan DefaultCheckInStart = new(7, 30, 0);
+        private static readonly TimeSpan DefaultCheckInEnd = new(9, 0, 0);
+
+        public AttendanceManager(IUnitOfWork unitOfWork, CheckInDtoValidator validator, IConfiguration configuration)
         {
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        }
+
+        /// <summary>The allowed check-in window (Egypt local time), from config with safe defaults.</summary>
+        public (TimeSpan Start, TimeSpan End) GetCheckInWindow()
+        {
+            var start = TimeSpan.TryParse(_configuration["Attendance:CheckInStart"], out var s) ? s : DefaultCheckInStart;
+            var end = TimeSpan.TryParse(_configuration["Attendance:CheckInEnd"], out var e) ? e : DefaultCheckInEnd;
+            return (start, end);
+        }
+
+        /// <summary>
+        /// The CALLER's own attendance record for today (or null Data when they
+        /// haven't checked in yet). Employee-safe — keyed on the token identity,
+        /// so the employee UI never needs the Admin-only paginated list.
+        /// </summary>
+        public async Task<APIResult<AttendanceDto?>> GetTodayAttendanceAsync(string userRole, Guid callerId)
+        {
+            if (userRole != "Employee" && userRole != "Admin")
+            {
+                return new APIResult<AttendanceDto?>
+                {
+                    Success = false,
+                    Errors = new[] { new APIError { Code = "Unauthorized", Message = "Not authorized to view attendance." } }
+                };
+            }
+
+            var today = await _unitOfWork.AttendanceRepository.GetTodayAttendanceAsync(callerId);
+            if (today == null)
+            {
+                return new APIResult<AttendanceDto?> { Success = true, Data = null };
+            }
+
+            var employee = await _unitOfWork.EmployeeRepository.GetByIDAsync(callerId);
+            return new APIResult<AttendanceDto?>
+            {
+                Success = true,
+                Data = new AttendanceDto
+                {
+                    AttendanceId = today.AttendanceId,
+                    EmployeeId = today.EmployeeId,
+                    EmployeeFullName = employee?.FullName,
+                    EmployeeEmail = employee?.Email,
+                    CheckInDate = today.CheckInDate,
+                    CheckInTime = today.CheckInTime,
+                    CheckOutTime = today.CheckOutTime,
+                    WorkingHours = today.WorkingHours,
+                    CheckInDateString = today.CheckInDateString,
+                    CheckInTimeString = today.CheckInTimeString,
+                    IsOnTime = today.IsOnTime,
+                    Status = today.Status,
+                    StatusDisplayName = AttendanceExtensions.GetStatusDisplayName(today)
+                }
+            };
         }
 
         public async Task<APIResult<CheckInResponseDto>> CheckInAsync(CheckInDto checkInDto, string userRole, Guid callerId)
@@ -45,12 +104,13 @@ namespace EmployeeManagementSys.BL
             var localTime = TimeZoneInfo.ConvertTimeFromUtc(now, GetEgyptTimeZone());
             var checkInTime = localTime.TimeOfDay;
 
-            if (checkInTime < new TimeSpan(7, 30, 0) || checkInTime > new TimeSpan(9, 0, 0))
+            var (windowStart, windowEnd) = GetCheckInWindow();
+            if (checkInTime < windowStart || checkInTime > windowEnd)
             {
                 return new APIResult<CheckInResponseDto>
                 {
                     Success = false,
-                    Errors = new[] { new APIError { Code = "TimeRestriction", Message = "Check-in is only allowed between 7:30 AM and 9:00 AM." } }
+                    Errors = new[] { new APIError { Code = "TimeRestriction", Message = $"Check-in is only allowed between {windowStart:hh\\:mm} and {windowEnd:hh\\:mm}." } }
                 };
             }
 

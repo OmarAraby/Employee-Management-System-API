@@ -46,6 +46,9 @@ services:
       Email__UseSsl: ${EMAIL_USE_SSL:-false}
       # Base URL of the ng reset page the emailed link points at.
       App__ResetPasswordUrl: ${APP_RESET_URL:-http://localhost:8085/reset-password-confirm}
+      # Attendance check-in window (Egypt local time, HH:mm). Business rule, tunable without a code change.
+      Attendance__CheckInStart: ${CHECKIN_START:-07:30}
+      Attendance__CheckInEnd: ${CHECKIN_END:-09:00}
     depends_on:
       db:
         condition: service_healthy
