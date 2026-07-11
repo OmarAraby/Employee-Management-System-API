@@ -33,6 +33,24 @@ namespace EmployeeManagementSys.API.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotDto)
+        {
+            // Always 200 (enumeration-safe) — the manager sends the email only
+            // if the account exists, but never reveals that to the caller.
+            var result = await _authManager.ForgotPasswordAsync(forgotDto);
+            return Ok(result);
+        }
+
+        [HttpPost("reset-password-confirm")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPasswordConfirm([FromBody] ResetPasswordWithTokenDto resetDto)
+        {
+            var result = await _authManager.ResetPasswordWithTokenAsync(resetDto);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
        
 
 
