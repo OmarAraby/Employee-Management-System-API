@@ -38,13 +38,31 @@ services:
       JWT__Audience: ${JWT_AUDIENCE:?set JWT_AUDIENCE in .env}
       JWT__IssuerSigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY in .env}
       Seed__AdminPassword: ${SEED_ADMIN_PASSWORD:?set SEED_ADMIN_PASSWORD in .env}
+      # Email: point at the smtp4dev catcher (no auth/SSL in dev). Prod supplies
+      # a real relay via these same Email__* vars.
+      Email__Host: ${EMAIL_HOST:-mail}
+      Email__Port: ${EMAIL_PORT:-25}
+      Email__From: ${EMAIL_FROM:-noreply@ems.local}
+      Email__UseSsl: ${EMAIL_USE_SSL:-false}
+      # Base URL of the ng reset page the emailed link points at.
+      App__ResetPasswordUrl: ${APP_RESET_URL:-http://localhost:8085/reset-password}
     depends_on:
       db:
         condition: service_healthy
+      mail:
+        condition: service_started
     volumes:
       - upload-data:/app/Upload
     ports:
       - "8080:8080"   # direct API access for debugging; the web app uses the nginx proxy
+
+  # Local mail catcher — captures all outgoing email (no real sending) and
+  # shows it in a web UI at http://localhost:5000. Dev only; prod points the
+  # Email__* vars at a real SMTP relay instead.
+  mail:
+    image: rnwood/smtp4dev:v3
+    ports:
+      - "127.0.0.1:5000:80"   # web inbox UI (SMTP :25 stays internal to the compose network)
 
   web:
     build: ${NG_BUILD_CONTEXT:-../Employee-Management-System-ng}

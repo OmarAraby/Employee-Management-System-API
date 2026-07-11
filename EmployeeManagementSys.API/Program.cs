@@ -1,3 +1,4 @@
+using EmployeeManagementSys.API.Email;
 using EmployeeManagementSys.API.HandleFiles;
 using EmployeeManagementSys.BL;
 using EmployeeManagementSys.DL;
@@ -14,6 +15,18 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngular", policyBuilder =>
+    {
+        policyBuilder
+            .WithOrigins("http://localhost:4200", "https://localhost:4200")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
 
 // Register the DbContext 
 builder.Services.AddDataAccessServices(builder.Configuration);
@@ -21,6 +34,10 @@ builder.Services.AddDataAccessServices(builder.Configuration);
 builder.Services.AddBusinessServices();
 
 builder.Services.AddScoped<IFileService, FileService>();
+
+// Email: bind the "Email" config section (env Email__*) and register the sender.
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 
 var app = builder.Build();
 
@@ -32,6 +49,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowAngular");
 
 app.UseAuthentication();
 app.UseAuthorization();
