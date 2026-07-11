@@ -15,20 +15,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAngular", policyBuilder =>
-    {
-        policyBuilder
-            .WithOrigins("http://localhost:4200", "https://localhost:4200")
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
-    });
-});
-
-// Register the DbContext 
+// Register the DbContext
 builder.Services.AddDataAccessServices(builder.Configuration);
 // Register the business services
 builder.Services.AddBusinessServices();
@@ -49,8 +36,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-app.UseCors("AllowAngular");
 
 app.UseAuthentication();
 app.UseAuthorization();

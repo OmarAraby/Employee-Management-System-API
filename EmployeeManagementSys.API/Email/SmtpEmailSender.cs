@@ -40,7 +40,8 @@ namespace EmployeeManagementSys.API.Email
             };
 
             await client.SendMailAsync(message);
-            _logger.LogInformation("Sent '{Subject}' email to {To}", subject, to);
+            // Do not log the recipient address (PII, per the team standard).
+            _logger.LogInformation("Sent '{Subject}' email", subject);
         }
     }
 }
