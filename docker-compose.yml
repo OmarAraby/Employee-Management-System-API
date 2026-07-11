@@ -45,7 +45,7 @@ services:
       Email__From: ${EMAIL_FROM:-noreply@ems.local}
       Email__UseSsl: ${EMAIL_USE_SSL:-false}
       # Base URL of the ng reset page the emailed link points at.
-      App__ResetPasswordUrl: ${APP_RESET_URL:-http://localhost:8085/reset-password}
+      App__ResetPasswordUrl: ${APP_RESET_URL:-http://localhost:8085/reset-password-confirm}
     depends_on:
       db:
         condition: service_healthy
