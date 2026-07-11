@@ -13,6 +13,12 @@ services:
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+    # Local-dev convenience: expose SQL Server to the host so GUI tools
+    # (SSMS / Azure Data Studio / DBeaver) can connect at localhost,1433.
+    # Bound to 127.0.0.1 so it is reachable only from this machine, not the
+    # LAN. NOT for shared/prod compose — the SA password lives in .env.
+    ports:
+      - "127.0.0.1:1433:1433"
     volumes:
       - mssql-data:/var/opt/mssql
     healthcheck:
