@@ -9,6 +9,8 @@ namespace EmployeeManagementSys.BL
 
         Task<APIResult<CheckInResponseDto>> CheckInAsync(CheckInDto checkInDto, string userRole, Guid callerId);
         Task<APIResult<CheckInResponseDto>> CheckOutAsync(string userRole, Guid callerId);
+        Task<APIResult<AttendanceDto?>> GetTodayAttendanceAsync(string userRole, Guid callerId);
+        (TimeSpan Start, TimeSpan End) GetCheckInWindow();
         Task<APIResult<PagedList<AttendanceListDto>>> GetPaginatedAttendanceAsync(AttendanceQueryParams queryParams, string userRole);
         Task<APIResult<IEnumerable<AttendanceListDto>>> GetWeeklyAttendanceAsync(Guid employeeId, string userRole, Guid callerId);
         Task<APIResult<IEnumerable<AttendanceListDto>>> GetDailyAttendanceListAsync(string userRole);

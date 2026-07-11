@@ -46,6 +46,28 @@ namespace EmployeeManagementSys.API.Controllers
             return result.Success ? Ok(result) : BadRequest(result);
         }
 
+        [HttpGet("today")]
+        [Authorize(Roles = "Employee,Admin")]
+        public async Task<IActionResult> GetTodayAttendance()
+        {
+            var userRole = User.GetRole();
+            if (!User.TryGetUserId(out var callerId)) return Forbid();
+            var result = await _attendanceManager.GetTodayAttendanceAsync(userRole, callerId);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpGet("check-in-window")]
+        [Authorize]
+        public IActionResult GetCheckInWindow()
+        {
+            var (start, end) = _attendanceManager.GetCheckInWindow();
+            return Ok(new APIResult<object>
+            {
+                Success = true,
+                Data = new { start = start.ToString(@"hh\:mm"), end = end.ToString(@"hh\:mm") }
+            });
+        }
+
         [HttpGet("weekly/{employeeId}")]
         [Authorize(Roles = "Employee,Admin")]
         public async Task<IActionResult> GetWeeklyAttendance(Guid employeeId)
